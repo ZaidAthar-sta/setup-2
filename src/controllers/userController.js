@@ -3,7 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/userModel.js";
 import { uploadOnCloudinary } from "../utils/Cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js"
-
+import { verifyJWT } from '../middlewares/authMiddleware.js';
 
 const genAccessAndRefreshToken = async (userId) => {
      try {
@@ -176,9 +176,60 @@ const logoutUser = asyncHandler(async (req, res) => {
           .json(new ApiResponse(200, {}, "User logged Out"));
 })
 
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+     const { oldPassword, newPassword } = req.body;
+
+     const user = await User.findById(req.user?._id);
+
+     const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
+     if (!isPasswordCorrect) {
+          throw new ApiError(400, "Invalid Old Password");
+     }
+
+     user.password = newPassword
+     
+     await user.save({ validateBeforeSave: false })
+
+     return res
+          .status(200)
+          .json(new ApiResponse(200, {}, "Password changed successfully !!"));
+})
+
+const updateUserDetails = asyncHandler(async (req, res) => {
+     const { fullname, email } = req.body;
+
+     if (!fullname || !email) {
+          throw new ApiError(401, "All fields are required");
+     }
+
+     const updatedUser = await User.findByIdAndUpdate(
+          req.user?._id,
+          {
+               $set: {
+                    fullname,
+                    email
+               }
+          }, { new: true }
+
+     ).select("-password")
+
+     return res
+          .status(200)
+          .json(new ApiResponse(200, updatedUser, "User Details Updated Successfully !!!"))
+})
 
 
-export { registerUser, loginUser, logoutUser }
+
+
+
+export {
+     registerUser,
+     loginUser,
+     logoutUser,
+     changeCurrentPassword,
+     updateUserDetails
+}
 
 // --------------------------------------------------------------------------
 

@@ -6,17 +6,25 @@ import { User } from '../models/userModel.js'
 export const verifyJWT = asyncHandler(async (req, res, next) => {
 
      try {
-          const token = req.cookies?.accessToken || req.header("Authorization")?.replace("Bearer ", "");
+          // const token = req.cookies?.accessToken || req.headers("Authorization")?.replace("Bearer ", "");
+          const token = req.cookies?.accessToken || req.headers['authorization']?.replace('Bearer ', '');
+
 
           if (!token) {
                throw new ApiError(401, "Unauthorized request")
           }
+          console.log("Token : ", token);
 
+          let decodedToken;
           try {
                decodedToken = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET)
           }
           catch (error) {
-               throw new ApiError(401, "Invalid token")
+               console.log("JWT verification failed: ", error)
+               if (error.name === 'TokenExpiredError') {
+                    throw new ApiError(401, "Token has expired");
+               }
+               throw new ApiError(401, "Invalid token");
           }
 
 
@@ -30,8 +38,7 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
           next();
 
      } catch (error) {
-
-          throw new ApiError(401, error?.message || "Invalid Access Token !!!");
-
+          console.error("Error in verifyJWT middleware:", error);
+          throw new ApiError(401, "Invalid Access Token !!!");
      }
 })
